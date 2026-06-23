@@ -12,6 +12,9 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 # =========================
@@ -37,6 +40,24 @@ if not TMDB_API_KEY:
 # =========================
 # FASTAPI APP
 # =========================
+
+session = requests.Session()
+
+retry_strategy = Retry(
+    total=5,
+    backoff_factor=1,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=["GET"]
+)
+
+adapter = HTTPAdapter(
+    max_retries=retry_strategy,
+    pool_connections=20,
+    pool_maxsize=20
+)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
+
 app = FastAPI(title="Movie Recommender API", version="3.0")
 
 app.add_middleware(
@@ -121,26 +142,24 @@ async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
     q["api_key"] = TMDB_API_KEY
 
     try:
-        r = requests.get(
+        r = session.get(
             f"{TMDB_BASE}{path}",
             params=q,
-            timeout=30
+            timeout=30,
+            headers={
+                "User-Agent": "MovieRecommender/1.0"
+            }
         )
 
         r.raise_for_status()
         return r.json()
 
     except Exception as e:
-        print("========== TMDB ERROR ==========")
-        print(type(e))
-        print(repr(e))
-        traceback.print_exc()
-        print("===============================")
+        print("TMDB ERROR:", repr(e))
 
-        raise HTTPException(
-            status_code=502,
-            detail=f"{type(e).__name__}: {repr(e)}"
-        )
+        return {
+            "results": []
+        }
 
 async def tmdb_cards_from_results(
     results: List[dict], limit: int = 20
