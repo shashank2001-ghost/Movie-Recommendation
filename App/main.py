@@ -4,6 +4,7 @@ import os
 import pickle
 from typing import Optional, List, Dict, Any, Tuple
 
+from fastapi.responses import RedirectResponse
 import numpy as np
 import pandas as pd
 import httpx
@@ -16,7 +17,13 @@ from dotenv import load_dotenv
 # =========================
 # ENV
 # =========================
-load_dotenv()
+from pathlib import Path
+
+import requests
+
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(env_path)
+
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 
 TMDB_BASE = "https://api.themoviedb.org/3"
@@ -108,29 +115,23 @@ def make_img_url(path: Optional[str]) -> Optional[str]:
 
 
 async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Safe TMDB GET:
-    - Network errors -> 502
-    - TMDB API errors -> 502 with detail
-    """
     q = dict(params)
     q["api_key"] = TMDB_API_KEY
 
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.get(f"{TMDB_BASE}{path}", params=q)
-    except httpx.RequestError as e:
+        r = requests.get(
+            f"{TMDB_BASE}{path}",
+            params=q,
+            timeout=20
+        )
+        r.raise_for_status()
+        return r.json()
+
+    except requests.RequestException as e:
         raise HTTPException(
             status_code=502,
-            detail=f"TMDB request error: {type(e).__name__} | {repr(e)}",
+            detail=f"TMDB request error: {str(e)}"
         )
-
-    if r.status_code != 200:
-        raise HTTPException(
-            status_code=502, detail=f"TMDB error {r.status_code}: {r.text}"
-        )
-
-    return r.json()
 
 
 async def tmdb_cards_from_results(
@@ -314,6 +315,11 @@ def load_pickles():
 # =========================
 # ROUTES
 # =========================
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
