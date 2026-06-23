@@ -21,7 +21,12 @@ st.markdown(
 .block-container { padding-top: 1rem; padding-bottom: 2rem; max-width: 1400px; }
 .small-muted { color:#6b7280; font-size: 0.92rem; }
 .movie-title { font-size: 0.9rem; line-height: 1.15rem; height: 2.3rem; overflow: hidden; }
-.card { border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 14px; background: rgba(255,255,255,0.7); }
+.card {
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 14px;
+    background: transparent;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -298,7 +303,7 @@ elif st.session_state.view == "details":
     # Top bar
     a, b = st.columns([3, 1])
     with a:
-        st.markdown("### 📄 Movie Details")
+        st.markdown("### Movie Details")
     with b:
         if st.button("← Back to Home"):
             goto_home()
@@ -313,35 +318,36 @@ elif st.session_state.view == "details":
     left, right = st.columns([1, 2.4], gap="large")
 
     with left:
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
         if data.get("poster_url"):
-            st.image(data["poster_url"], use_column_width=True)
+            st.image(
+                data["poster_url"],
+                use_column_width=True
+            )
         else:
             st.write("🖼️ No poster")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with right:
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown(f"## {data.get('title','')}")
+
         release = data.get("release_date") or "-"
-        genres = ", ".join([g["name"] for g in data.get("genres", [])]) or "-"
-        st.markdown(
-            f"<div class='small-muted'>Release: {release}</div>", unsafe_allow_html=True
-        )
-        st.markdown(
-            f"<div class='small-muted'>Genres: {genres}</div>", unsafe_allow_html=True
-        )
-        st.markdown("---")
-        st.markdown("### Overview")
+        genres = ", ".join(
+            [g["name"] for g in data.get("genres", [])]
+        ) or "-"
+
+        st.caption(f"Release: {release}")
+        st.caption(f"Genres: {genres}")
+
+        st.divider()
+
+        st.subheader("Overview")
         st.write(data.get("overview") or "No overview available.")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     if data.get("backdrop_url"):
         st.markdown("#### Backdrop")
         st.image(data["backdrop_url"], use_column_width=True)
 
     st.divider()
-    st.markdown("### ✅ Recommendations")
+    st.markdown("### Recommendations")
 
     # Recommendations (TF-IDF + Genre) via your bundle endpoint
     title = (data.get("title") or "").strip()
