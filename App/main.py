@@ -114,6 +114,8 @@ def make_img_url(path: Optional[str]) -> Optional[str]:
     return f"{TMDB_IMG_500}{path}"
 
 
+import traceback
+
 async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
     q = dict(params)
     q["api_key"] = TMDB_API_KEY
@@ -122,17 +124,23 @@ async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
         r = requests.get(
             f"{TMDB_BASE}{path}",
             params=q,
-            timeout=20
+            timeout=30
         )
+
         r.raise_for_status()
         return r.json()
 
-    except requests.RequestException as e:
+    except Exception as e:
+        print("========== TMDB ERROR ==========")
+        print(type(e))
+        print(repr(e))
+        traceback.print_exc()
+        print("===============================")
+
         raise HTTPException(
             status_code=502,
-            detail=f"TMDB request error: {str(e)}"
+            detail=f"{type(e).__name__}: {repr(e)}"
         )
-
 
 async def tmdb_cards_from_results(
     results: List[dict], limit: int = 20
